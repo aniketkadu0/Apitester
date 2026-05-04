@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>API Tester</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:          #f0f2f7;
+      --surface:     #ffffff;
+      --surface2:    #f7f8fc;
+      --surface3:    #eef0f6;
+      --accent:      #5b6af5;
+      --accent-dim:  rgba(91,106,245,0.10);
+      --accent2:     #f09000;
+      --GET:    #16a249; --POST: #2563eb; --PUT: #c2420f;
+      --PATCH:  #7c3aed; --DELETE: #dc2626; --HEAD: #0f766e; --OPTIONS: #64748b;
+      --text:       #1a1d2e;
+      --text-sub:   #4b5068;
+      --text-muted: #8b90a8;
+      --border:     #dde1ee;
+      --input-bg:   #f7f8fc;
+      --error:  #dc2626;
+      --radius:    12px;
+      --radius-sm:  8px;
+      --radius-xs:  6px;
+      --sh-xs: 0 1px 3px rgba(0,0,0,.07);
+      --sh-sm: 0 2px 8px rgba(0,0,0,.09);
+      --sh-md: 0 4px 20px rgba(0,0,0,.12);
+      --font-ui:   'Inter', system-ui, sans-serif;
+      --font-code: 'JetBrains Mono', monospace;
+      --sidebar-w: 240px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    input, select, textarea, button { font-family: var(--font-ui); }
+    html, body { height: 100%; font-family: var(--font-ui); background: var(--bg); color: var(--text); overscroll-behavior: none; -webkit-font-smoothing: antialiased; }
+    body { display: flex; flex-direction: column; height: 100dvh; }
+
+    /* ── App Header ── */
+    .app-header {
+      background: var(--surface);
+      height: 52px;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1.5px solid var(--border);
+      box-shadow: var(--sh-xs);
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .sidebar-toggle {
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      background: none; border: none; border-radius: var(--radius-xs);
+      cursor: pointer; color: var(--text-sub); flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    .sidebar-toggle:active { background: var(--surface3); }
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #5b6af5 0%, #8b5cf6 100%);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(91,106,245,.3);
+      flex-shrink: 0;
+    }
+    .logo-icon svg { width: 16px; height: 16px; }
+    .header-text { flex: 1; min-width: 0; }
+    .app-title { font-family: var(--font-code); font-size: 14px; font-weight: 600; letter-spacing: -0.2px; }
+    .app-title .slash { color: var(--accent); }
+    .app-subtitle { font-size: 10px; color: var(--text-muted); font-weight: 500; letter-spacing: 0.3px; }
+    .header-actions { display: flex; gap: 6px; }
+    .hdr-btn {
+      height: 32px; padding: 0 10px;
+      background: var(--surface2); border: 1.5px solid var(--border);
+      border-radius: var(--radius-xs); color: var(--text-sub);
+      font-size: 12px; font-weight: 500; cursor: pointer;
+      display: flex; align-items: center; gap: 5px;
+      white-space: nowrap; transition: all 0.15s;
+    }
+    .hdr-btn:active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+    /* ── Layout: Sidebar + Main ── */
+    .layout { flex: 1; display: flex; overflow: hidden; position: relative; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--surface);
+      border-right: 1.5px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow: hidden;
+      transition: width 0.22s ease, opacity 0.22s;
+      z-index: 5;
+    }
+    .sidebar.collapsed { width: 0; opacity: 0; pointer-events: none; border: none; }
+
+    .sidebar-header {
+      padding: 10px 12px 8px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .sidebar-title {
+      font-family: var(--font-code);
+      font-size: 10px; font-weight: 700;
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;
+    }
+    .new-req-btn {
+      width: 26px; height: 26px;
+      background: var(--accent); border: none; border-radius: 6px;
+      color: #fff; font-size: 18px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; box-shadow: 0 1px 6px rgba(91,106,245,.35);
+      transition: opacity 0.15s;
+    }
+    .new-req-btn:active { opacity: 0.8; }
+
+    .sidebar-search {
+      padding: 8px 10px;
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-search input {
+      width: 100%; height: 32px;
+      background: var(--input-bg); border: 1.5px solid var(--border);
+      border-radius: var(--radius-xs); padding: 0 10px;
+      font-size: 12px; color: var(--text);
+      font-family: var(--font-ui);
+    }
+    .sidebar-search input:focus { outline: none; border-color: var(--accent); }
+    .sidebar-search input::placeholder { color: var(--text-muted); }
+
+    .sidebar-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 0;
+    }
+    .sidebar-list::-webkit-scrollbar { width: 3px; }
+    .sidebar-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .req-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 12px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: background 0.12s, border-color 0.12s;
+      min-width: 0;
+    }
+    .req-item:hover { background: var(--surface2); }
+    .req-item.active { background: var(--accent-dim); border-left-color: var(--accent); }
+    .req-method-tag {
+      font-family: var(--font-code);
+      font-size: 9.5px; font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 4px;
+      color: #fff;
+      flex-shrink: 0;
+      min-width: 38px;
+      text-align: center;
+      letter-spacing: 0.3px;
+    }
+    .tag-GET    { background: var(--GET); }
+    .tag-POST   { background: var(--POST); }
+    .tag-PUT    { background: var(--PUT); }
+    .tag-PATCH  { background: var(--PATCH); }
+    .tag-DELETE { background: var(--DELETE); }
+    .tag-HEAD   { background: var(--HEAD); }
+    .tag-OPTIONS{ background: var(--OPTIONS); }
+
+    .req-name {
+      flex: 1; min-width: 0;
+      font-size: 12.5px; font-weight: 500;
+      color: var(--text-sub);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .req-item.active .req-name { color: var(--accent); font-weight: 600; }
+    .req-item-actions {
+      display: flex; gap: 2px; flex-shrink: 0; opacity: 0; transition: opacity 0.15s;
+    }
+    .req-item:hover .req-item-actions { opacity: 1; }
+    .req-del, .req-copy-btn {
+      width: 22px; height: 22px;
+      background: none; border: none; border-radius: 4px;
+      color: var(--text-muted); font-size: 15px; line-height: 1;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: background 0.15s, color 0.15s;
+    }
+    .req-del:active { background: #fee2e2; color: var(--error); }
+    .req-copy-btn:active { background: var(--accent-dim); color: var(--accent); }
+
+    .sidebar-empty {
+      padding: 28px 16px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 12.5px;
+      line-height: 1.6;
+    }
+
+    /* ── Main area ── */
+    .main-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+    /* ── Tab Bar ── */
+    .tab-bar {
+      background: var(--surface);
+      border-bottom: 1.5px solid var(--border);
+      display: flex;
+      align-items: center;
+      overflow-x: auto;
+      scrollbar-width: none;
+      flex-shrink: 0;
+      height: 42px;
+      padding: 0 4px;
+      gap: 2px;
+    }
+    .tab-bar::-webkit-scrollbar { display: none; }
+    .req-tab {
+      height: 34px;
+      min-width: 90px; max-width: 160px;
+      padding: 0 10px;
+      display: flex; align-items: center; gap: 6px;
+      background: none; border: 1.5px solid transparent;
+      border-radius: var(--radius-xs);
+      cursor: pointer; flex-shrink: 0;
+      color: var(--text-muted); font-size: 12.5px; font-weight: 500;
+      transition: all 0.12s; white-space: nowrap;
+    }
+    .req-tab:hover { background: var(--surface2); border-color: var(--border); }
+    .req-tab.active {
+      background: var(--accent-dim);
+      border-color: rgba(91,106,245,.3);
+      color: var(--accent); font-weight: 700;
+    }
+    .req-tab .tab-method {
+      font-family: var(--font-code); font-size: 9.5px; font-weight: 700;
+      padding: 1px 5px; border-radius: 3px; color: #fff; flex-shrink: 0;
+    }
+    .req-tab .tab-label {
+      flex: 1; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .req-tab .tab-close {
+      width: 16px; height: 16px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 3px; flex-shrink: 0; font-size: 14px; line-height: 1;
+      opacity: 0.5; transition: opacity 0.12s, background 0.12s;
+    }
+    .req-tab:hover .tab-close,
+    .req-tab.active .tab-close { opacity: 1; }
+    .req-tab .tab-close:hover { background: rgba(220,38,38,.12); color: var(--error); opacity: 1; }
+    .req-tab .tab-copy {
+      width: 16px; height: 16px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 3px; flex-shrink: 0; font-size: 11px; line-height: 1;
+      opacity: 0; transition: opacity 0.12s, background 0.12s;
+    }
+    .req-tab:hover .tab-copy,
+    .req-tab.active .tab-copy { opacity: 0.55; }
+    .req-tab .tab-copy:hover { background: var(--accent-dim); color: var(--accent); opacity: 1; }
+
+    /* Tab name bar */
+    .tab-name-bar {
+      padding: 8px 14px 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    .tab-name-input {
+      width: 100%; height: 36px;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-xs);
+      padding: 0 11px;
+      font-family: var(--font-ui); font-size: 13px; font-weight: 600;
+      color: var(--text);
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .tab-name-input:focus { outline: none; border-color: var(--accent); background: #fff; }
+    .tab-name-input::placeholder { color: var(--text-muted); font-weight: 400; }
+    .add-tab-btn {
+      width: 32px; height: 32px; flex-shrink: 0;
+      background: none; border: 1.5px dashed var(--border);
+      border-radius: var(--radius-xs); color: var(--text-muted);
+      font-size: 20px; line-height: 1; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s; margin-left: 2px;
+    }
+    .add-tab-btn:active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+    /* ── Scrollable request content ── */
+    .main-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+    /* ── Request Bar ── */
+    .request-bar {
+      padding: 10px 12px 8px;
+      background: var(--surface);
+      border-bottom: 1.5px solid var(--border);
+      display: flex; flex-direction: column; gap: 8px;
+      flex-shrink: 0;
+    }
+    .method-url-row { display: flex; gap: 7px; align-items: center; }
+
+    /* Custom method dropdown */
+    .method-wrap { position: relative; flex-shrink: 0; }
+    .method-btn {
+      height: 46px; min-width: 94px; padding: 0 12px;
+      display: flex; align-items: center; justify-content: space-between; gap: 7px;
+      border: none; border-radius: var(--radius-sm);
+      font-family: var(--font-code); font-weight: 700; font-size: 13px; color: #fff;
+      cursor: pointer; letter-spacing: 0.6px;
+      box-shadow: var(--sh-sm); transition: opacity 0.15s, transform 0.12s;
+    }
+    .method-btn:active { transform: scale(0.96); }
+    .method-btn .chevron { width: 14px; height: 14px; flex-shrink: 0; opacity: 0.75; transition: transform 0.2s; }
+    .method-btn.open .chevron { transform: rotate(180deg); }
+    .method-btn.GET    { background: var(--GET); }
+    .method-btn.POST   { background: var(--POST); }
+    .method-btn.PUT    { background: var(--PUT); }
+    .method-btn.PATCH  { background: var(--PATCH); }
+    .method-btn.DELETE { background: var(--DELETE); }
+    .method-btn.HEAD   { background: var(--HEAD); }
+    .method-btn.OPTIONS{ background: var(--OPTIONS); }
+    .method-menu {
+      display: none; position: absolute; top: calc(100% + 6px); left: 0;
+      z-index: 200; background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); box-shadow: var(--sh-md);
+      overflow: hidden; min-width: 120px;
+    }
+    .method-menu.open { display: block; }
+    .method-item {
+      display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+      cursor: pointer; font-family: var(--font-code); font-size: 13px; font-weight: 600;
+      color: var(--text-sub); transition: background 0.12s; letter-spacing: 0.4px;
+    }
+    .method-item:hover { background: var(--surface2); }
+    .method-item.selected { background: var(--accent-dim); color: var(--accent); }
+    .method-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .dot-GET    { background: var(--GET); }  .dot-POST   { background: var(--POST); }
+    .dot-PUT    { background: var(--PUT); }  .dot-PATCH  { background: var(--PATCH); }
+    .dot-DELETE { background: var(--DELETE); } .dot-HEAD { background: var(--HEAD); }
+    .dot-OPTIONS{ background: var(--OPTIONS); }
+
+    .url-input {
+      flex: 1; height: 46px; background: var(--input-bg);
+      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      padding: 0 13px; color: var(--text); font-family: var(--font-code);
+      font-size: 13px; min-width: 0;
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    }
+    .url-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); background: #fff; }
+    .url-input::placeholder { color: var(--text-muted); }
+
+    .send-btn {
+      width: 100%; height: 48px;
+      background: linear-gradient(135deg, #5b6af5 0%, #7c5cf5 100%);
+      color: #fff; border: none; border-radius: var(--radius-sm);
+      font-weight: 700; font-size: 14px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      box-shadow: 0 3px 12px rgba(91,106,245,.45);
+      transition: all 0.15s; letter-spacing: 0.3px;
+    }
+    .send-btn:active { transform: scale(0.98); }
+    .send-btn.loading { opacity: 0.65; pointer-events: none; }
+
+    /* ── Request inner tabs ── */
+    .req-nav {
+      display: flex; background: var(--surface); border-bottom: 1.5px solid var(--border);
+      overflow-x: auto; scrollbar-width: none; flex-shrink: 0;
+    }
+    .req-nav::-webkit-scrollbar { display: none; }
+    .req-nav-btn {
+      flex: 1; min-width: 66px; height: 42px;
+      background: none; border: none; color: var(--text-muted);
+      font-size: 12.5px; font-weight: 500; cursor: pointer;
+      position: relative; white-space: nowrap; transition: color 0.15s;
+    }
+    .req-nav-btn.active { color: var(--accent); font-weight: 700; }
+    .req-nav-btn.active::after {
+      content: ''; position: absolute; bottom: 0; left: 12px; right: 12px;
+      height: 2.5px; background: var(--accent); border-radius: 3px 3px 0 0;
+    }
+
+    /* ── Pane content ── */
+    .req-pane { display: none; padding: 14px 14px 20px; }
+    .req-pane.active { display: block; }
+
+    .section-label {
+      font-family: var(--font-code); font-size: 10.5px; font-weight: 600;
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.2px;
+      margin-bottom: 12px; display: flex; align-items: center; gap: 7px;
+    }
+    .section-label::before {
+      content: ''; display: block; width: 3px; height: 13px;
+      background: linear-gradient(180deg, #5b6af5, #8b5cf6); border-radius: 2px;
+    }
+
+    /* KV rows */
+    .kv-list { display: flex; flex-direction: column; gap: 8px; }
+    .kv-row {
+      display: flex; gap: 6px; align-items: center;
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); padding: 6px 8px;
+      box-shadow: var(--sh-xs); transition: border-color 0.15s;
+    }
+    .kv-row:focus-within { border-color: var(--accent); }
+    .kv-toggle {
+      width: 28px; height: 28px; border-radius: var(--radius-xs);
+      border: 1.5px solid var(--border); background: var(--surface2);
+      color: var(--text-muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; flex-shrink: 0; transition: all 0.15s;
+    }
+    .kv-toggle.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+    .kv-row .kv-key, .kv-row .kv-val {
+      flex: 1; height: 40px; background: var(--input-bg);
+      border: 1.5px solid transparent; border-radius: var(--radius-xs);
+      padding: 0 10px; color: var(--text); font-family: var(--font-code);
+      font-size: 12.5px; min-width: 0; transition: border-color 0.15s, background 0.15s;
+    }
+    .kv-row .kv-key:focus, .kv-row .kv-val:focus { outline: none; border-color: var(--accent); background: #fff; }
+    .kv-row .kv-key::placeholder, .kv-row .kv-val::placeholder { color: var(--text-muted); }
+    .kv-row .kv-key { flex: 0.85; }
+    .kv-del {
+      width: 34px; height: 34px; background: none; border: none;
+      border-radius: var(--radius-xs); color: var(--text-muted);
+      font-size: 20px; line-height: 1; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: all 0.15s;
+    }
+    .kv-del:active { background: #fee2e2; color: var(--error); }
+
+    .add-row-btn {
+      width: 100%; margin-top: 10px; padding: 12px;
+      background: var(--surface); border: 1.5px dashed var(--border);
+      border-radius: var(--radius-sm); color: var(--text-muted);
+      font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+    }
+    .add-row-btn:active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+    /* Auth */
+    .auth-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
+    .auth-type-opt {
+      padding: 13px 8px; background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text-sub);
+      font-size: 13px; font-weight: 500; cursor: pointer; text-align: center;
+      transition: all 0.15s; box-shadow: var(--sh-xs);
+    }
+    .auth-type-opt.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+    .auth-field { margin-bottom: 14px; }
+    .auth-field label {
+      display: block; font-family: var(--font-code); font-size: 10.5px; font-weight: 600;
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px;
+    }
+    .auth-field input, .auth-field select {
+      width: 100%; height: 46px; background: var(--input-bg);
+      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      padding: 0 13px; color: var(--text); font-family: var(--font-code); font-size: 13.5px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .auth-field input:focus, .auth-field select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+    .auth-field input::placeholder { color: var(--text-muted); }
+
+    /* Body */
+    .body-type-row {
+      display: flex; gap: 7px; margin-bottom: 14px;
+      overflow-x: auto; scrollbar-width: none; padding-bottom: 2px;
+    }
+    .body-type-row::-webkit-scrollbar { display: none; }
+    .body-type-chip {
+      flex-shrink: 0; padding: 7px 15px; background: var(--surface);
+      border: 1.5px solid var(--border); border-radius: 20px;
+      color: var(--text-sub); font-family: var(--font-code); font-size: 12.5px;
+      font-weight: 500; cursor: pointer; transition: all 0.15s; box-shadow: var(--sh-xs);
+    }
+    .body-type-chip.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+    .body-zone { display: none; }
+    .body-zone.active { display: block; }
+    .body-textarea {
+      width: 100%; min-height: 200px; background: var(--surface);
+      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      padding: 13px; color: var(--text); font-family: var(--font-code);
+      font-size: 12.5px; line-height: 1.7; resize: vertical; box-shadow: var(--sh-xs);
+      transition: border-color 0.15s;
+    }
+    .body-textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+    .format-btn {
+      margin-top: 8px; padding: 9px 16px; background: var(--surface);
+      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      color: var(--text-sub); font-family: var(--font-code); font-size: 12.5px;
+      font-weight: 500; cursor: pointer; box-shadow: var(--sh-xs); transition: all 0.15s;
+    }
+    .format-btn:active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+    /* Response */
+    .response-section { border-top: 2.5px solid var(--border); background: var(--surface2); }
+    .response-top { padding: 10px 14px 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    .response-label {
+      font-family: var(--font-code); font-size: 10.5px; font-weight: 700;
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.2px;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .response-label::before { content: ''; display: block; width: 3px; height: 13px; background: linear-gradient(180deg, #5b6af5, #8b5cf6); border-radius: 2px; }
+    .response-pills { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+    .status-pill { padding: 4px 12px; border-radius: 20px; font-family: var(--font-code); font-size: 12px; font-weight: 700; }
+    .status-pill.s2 { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+    .status-pill.s3 { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .status-pill.s4 { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+    .status-pill.s5 { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+    .meta-chip { font-family: var(--font-code); font-size: 11px; color: var(--text-muted); background: var(--surface3); padding: 3px 9px; border-radius: 12px; border: 1px solid var(--border); }
+    .resp-inner-tabs { display: flex; border-bottom: 1.5px solid var(--border); background: var(--surface); }
+    .resp-tab-btn {
+      flex: 1; height: 40px; background: none; border: none;
+      color: var(--text-muted); font-size: 12.5px; font-weight: 500;
+      cursor: pointer; position: relative; transition: color 0.15s;
+    }
+    .resp-tab-btn.active { color: var(--accent); font-weight: 700; }
+    .resp-tab-btn.active::after { content: ''; position: absolute; bottom: 0; left: 16px; right: 16px; height: 2.5px; background: var(--accent); border-radius: 3px 3px 0 0; }
+    .resp-pane { display: none; padding: 12px 14px 24px; }
+    .resp-pane.active { display: block; }
+    .resp-toolbar { display: flex; justify-content: flex-end; margin-bottom: 9px; }
+    .copy-btn {
+      padding: 6px 14px; background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--radius-xs); color: var(--text-sub);
+      font-family: var(--font-code); font-size: 12px; font-weight: 500; cursor: pointer;
+      box-shadow: var(--sh-xs); transition: all 0.15s;
+    }
+    .copy-btn:active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+    .resp-body-wrap { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 13px; box-shadow: var(--sh-xs); overflow-x: auto; }
+    pre.resp-body { font-family: var(--font-code); font-size: 12px; line-height: 1.75; white-space: pre-wrap; word-break: break-all; color: var(--text); }
+    .jk { color: #0550ae; font-weight: 600; }
+    .js { color: #116329; }
+    .jn { color: #953800; }
+    .jb { color: #8250df; }
+    .jx { color: #cf222e; }
+    .resp-hdr-list { display: flex; flex-direction: column; gap: 7px; }
+    .resp-hdr-item { background: var(--surface); border-radius: var(--radius-sm); padding: 9px 12px; border: 1.5px solid var(--border); }
+    .resp-hdr-key { font-family: var(--font-code); font-size: 11.5px; color: var(--accent); font-weight: 600; word-break: break-all; margin-bottom: 2px; }
+    .resp-hdr-val { font-family: var(--font-code); font-size: 11.5px; color: var(--text-sub); word-break: break-all; }
+
+    .info-box { background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: var(--radius-sm); padding: 11px 13px; font-size: 13px; color: #1d4ed8; line-height: 1.55; }
+    .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; }
+    .empty-state .icon { font-size: 34px; margin-bottom: 10px; opacity: 0.65; }
+    .empty-state strong { color: var(--text-sub); }
+
+    .loader { display: flex; align-items: center; justify-content: center; padding: 40px; gap: 10px; color: var(--text-muted); font-size: 13px; }
+    .spinner { width: 18px; height: 18px; border: 2.5px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: var(--text); color: #fff;
+      padding: 9px 20px; border-radius: 20px;
+      font-size: 13px; font-weight: 500;
+      z-index: 9999; opacity: 0; transition: opacity 0.22s, transform 0.22s;
+      pointer-events: none; white-space: nowrap; box-shadow: var(--sh-md);
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* Modal */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.35); z-index: 500;
+      align-items: flex-end; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      width: 100%; max-width: 480px;
+      background: var(--surface); border-radius: var(--radius) var(--radius) 0 0;
+      padding: 20px 16px 32px;
+      box-shadow: 0 -4px 30px rgba(0,0,0,.15);
+      max-height: 85vh; overflow-y: auto;
+    }
+    .modal h3 { font-size: 15px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
+    .modal textarea {
+      width: 100%; height: 180px; background: var(--input-bg);
+      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      padding: 12px; color: var(--text); font-family: var(--font-code);
+      font-size: 12px; line-height: 1.65; resize: vertical;
+    }
+    .modal textarea:focus { outline: none; border-color: var(--accent); }
+    .modal-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .modal-btn {
+      flex: 1; height: 44px; border: none; border-radius: var(--radius-sm);
+      font-weight: 600; font-size: 13.5px; cursor: pointer; transition: opacity 0.15s;
+    }
+    .modal-btn.primary { background: var(--accent); color: #fff; }
+    .modal-btn.primary:active { opacity: 0.85; }
+    .modal-btn.secondary { background: var(--surface3); color: var(--text-sub); border: 1.5px solid var(--border); }
+    .modal-btn.secondary:active { opacity: 0.75; }
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<div class="app-header">
+  <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="5" width="18" height="2" rx="1" fill="currentColor"/>
+      <rect x="3" y="11" width="18" height="2" rx="1" fill="currentColor"/>
+      <rect x="3" y="17" width="18" height="2" rx="1" fill="currentColor"/>
+    </svg>
+  </button>
+  <div class="logo-icon">
+    <svg viewBox="0 0 24 24" fill="none">
+      <path d="M22 2L11 13" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M22 2L15 22l-4-9-9-4 20-7z" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+  <div class="header-text">
+    <div class="app-title">api<span class="slash">/</span>tester</div>
+    <div class="app-subtitle">MOBILE REST CLIENT</div>
+  </div>
+  <div class="header-actions">
+    <button class="hdr-btn" id="exportBtn" title="Export all tabs as JSON">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Export
+    </button>
+    <button class="hdr-btn" id="importBtn" title="Import tabs from JSON">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Import
+    </button>
+  </div>
+</div>
+
+<!-- ── Layout ── -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Requests</span>
+      <button class="new-req-btn" id="newReqBtn" title="New request">+</button>
+    </div>
+    <div class="sidebar-search">
+      <input type="text" id="sidebarSearch" placeholder="Search requests…">
+    </div>
+    <div class="sidebar-list" id="sidebarList">
+      <div class="sidebar-empty" id="sidebarEmpty">No requests yet.<br>Click <strong>+</strong> to add one.</div>
+    </div>
+  </div>
+
+  <!-- Main area -->
+  <div class="main-area">
+
+    <!-- Tab bar -->
+    <div class="tab-bar" id="tabBar">
+      <button class="add-tab-btn" id="addTabBtn" title="New tab">+</button>
+    </div>
+
+    <!-- Request content -->
+    <div class="main-scroll" id="mainScroll">
+      <!-- Populated by JS -->
+      <div id="noTabMsg" class="empty-state" style="padding:60px 20px">
+        <div class="icon">📂</div>
+        Click <strong>+</strong> to create a new request tab.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal">
+    <h3>Import Requests JSON</h3>
+    <textarea id="importJson" placeholder='Paste exported JSON here…'></textarea>
+    <div class="modal-actions">
+      <button class="modal-btn secondary" id="importCancel">Cancel</button>
+      <button class="modal-btn primary" id="importConfirm">Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal-overlay" id="exportModal">
+  <div class="modal">
+    <h3>Export Requests JSON</h3>
+    <textarea id="exportJson" readonly></textarea>
+    <div class="modal-actions">
+      <button class="modal-btn secondary" id="exportClose">Close</button>
+      <button class="modal-btn primary" id="exportCopy">Copy JSON</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════ */
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function showToast(msg, ms=2400) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),ms);
+}
+function fmtBytes(n){
+  if(n<1024)return n+' B';
+  if(n<1048576)return(n/1024).toFixed(1)+' KB';
+  return(n/1048576).toFixed(1)+' MB';
+}
+async function copyText(t){
+  try{await navigator.clipboard.writeText(t);showToast('Copied ✓');}
+  catch{showToast('Copy failed');}
+}
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+/* ═══════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════ */
+const STORAGE_KEY = 'apitester_tabs_v2';
+let tabs = [];          // array of tab objects
+let activeTabId = null;
+let _sidebarOpen = true;
+
+/* tab schema:
+  { id, name, method, url,
+    params:[{k,v,on}], headers:[{k,v,on}],
+    authType, authData:{},
+    bodyType, bodyJson, bodyText, bodyXml, bodyForm:[{k,v,on}],
+    response: null | { status, statusText, elapsed, size, body, headers:{} }
+  }
+*/
+
+function newTab(partial={}) {
+  return {
+    id: uid(),
+    name: partial.name || 'New Request',
+    _customName: partial._customName || false,
+    method: partial.method || 'GET',
+    url: partial.url || '',
+    params: partial.params || [],
+    headers: partial.headers || [],
+    authType: partial.authType || 'none',
+    authData: partial.authData || {},
+    bodyType: partial.bodyType || 'none',
+    bodyJson: partial.bodyJson || '',
+    bodyText: partial.bodyText || '',
+    bodyXml: partial.bodyXml || '',
+    bodyForm: partial.bodyForm || [],
+    response: partial.response || null
+  };
+}
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ tabs, activeTabId }));
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    tabs = (d.tabs||[]).map(t => newTab(t));
+    activeTabId = d.activeTabId || null;
+    if (tabs.length && !tabs.find(t=>t.id===activeTabId)) activeTabId = tabs[0].id;
+  } catch {}
+}
+
+/* ═══════════════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════════════ */
+function getTab(id){ return tabs.find(t=>t.id===id)||null; }
+function activeTab(){ return getTab(activeTabId); }
+
+function renderAll() {
+  renderTabBar();
+  renderSidebar();
+  renderMainContent();
+}
+
+/* ── Tab Bar ── */
+function renderTabBar() {
+  const bar = document.getElementById('tabBar');
+  // remove old tabs (keep add button)
+  bar.querySelectorAll('.req-tab').forEach(el=>el.remove());
+  const addBtn = document.getElementById('addTabBtn');
+
+  tabs.forEach(tab => {
+    const el = document.createElement('button');
+    el.className = 'req-tab' + (tab.id===activeTabId?' active':'');
+    el.dataset.id = tab.id;
+    el.innerHTML = `
+      <span class="tab-method tag-${tab.method}" style="background:var(--${tab.method})">${tab.method}</span>
+      <span class="tab-label">${esc(tab.name)}</span>
+      <span class="tab-copy" data-copy="${tab.id}" title="Duplicate tab">⧉</span>
+      <span class="tab-close" data-close="${tab.id}" title="Close tab">×</span>
+    `;
+    el.addEventListener('click', e => {
+      if (e.target.dataset.close) { closeTab(e.target.dataset.close); return; }
+      if (e.target.dataset.copy)  { copyTab(e.target.dataset.copy);  return; }
+      switchTab(tab.id);
+    });
+    bar.insertBefore(el, addBtn);
+  });
+}
+
+/* ── Sidebar ── */
+function renderSidebar(filter='') {
+  const list = document.getElementById('sidebarList');
+  const empty = document.getElementById('sidebarEmpty');
+  list.querySelectorAll('.req-item').forEach(el=>el.remove());
+
+  const q = filter.toLowerCase();
+  const visible = tabs.filter(t => !q || t.name.toLowerCase().includes(q) || t.url.toLowerCase().includes(q) || t.method.toLowerCase().includes(q));
+
+  empty.style.display = visible.length ? 'none' : 'block';
+
+  visible.forEach(tab => {
+    const el = document.createElement('div');
+    el.className = 'req-item' + (tab.id===activeTabId?' active':'');
+    el.dataset.id = tab.id;
+    el.innerHTML = `
+      <span class="req-method-tag tag-${tab.method}">${tab.method}</span>
+      <span class="req-name">${esc(tab.name)}</span>
+      <div class="req-item-actions">
+        <button class="req-copy-btn" data-copy="${tab.id}" title="Duplicate">⧉</button>
+        <button class="req-del" data-del="${tab.id}" title="Delete">×</button>
+      </div>
+    `;
+    el.addEventListener('click', e => {
+      if (e.target.dataset.del)  { closeTab(e.target.dataset.del); return; }
+      if (e.target.dataset.copy) { copyTab(e.target.dataset.copy); return; }
+      switchTab(tab.id); 
+      // on mobile close sidebar after picking
+      if (window.innerWidth < 600) toggleSidebar(false);
+    });
+    list.appendChild(el);
+  });
+}
+
+/* ── Main content ── */
+function renderMainContent() {
+  const scroll = document.getElementById('mainScroll');
+  const noMsg  = document.getElementById('noTabMsg');
+  if (!tabs.length || !activeTabId) {
+    noMsg.style.display = 'block';
+    scroll.querySelectorAll('.tab-content').forEach(el=>el.remove());
+    return;
+  }
+  noMsg.style.display = 'none';
+
+  // Remove stale content panels
+  scroll.querySelectorAll('.tab-content').forEach(el => {
+    if (el.dataset.id !== activeTabId) el.remove();
+  });
+
+  const tab = activeTab();
+  if (!tab) return;
+
+  // Reuse existing panel if already rendered
+  if (scroll.querySelector(`.tab-content[data-id="${tab.id}"]`)) {
+    syncFormToTab(tab);
+    return;
+  }
+
+  const div = document.createElement('div');
+  div.className = 'tab-content';
+  div.dataset.id = tab.id;
+  div.innerHTML = buildTabHTML(tab);
+  scroll.appendChild(div);
+  bindTabEvents(div, tab);
+}
+
+function buildTabHTML(tab) {
+  const pAuth = buildAuthHTML(tab.authType, tab.authData);
+  const pBody = buildBodyHTML(tab.bodyType, tab);
+  const pResp = buildResponseHTML(tab.response);
+
+  return `
+  <!-- Tab Name Bar -->
+  <div class="tab-name-bar">
+    <input class="tab-name-input" id="tname_${tab.id}" type="text"
+      value="${esc(tab.name)}" placeholder="Request name…"
+      autocomplete="off" spellcheck="false">
+  </div>
+
+  <!-- Request Bar -->
+  <div class="request-bar">
+    <div class="method-url-row">
+      <div class="method-wrap">
+        <button class="method-btn ${tab.method}" id="mb_${tab.id}">
+          <span class="mlabel">${tab.method}</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="method-menu" id="mm_${tab.id}">
+          ${['GET','POST','PUT','PATCH','DELETE','HEAD','OPTIONS'].map(m=>`
+            <div class="method-item${m===tab.method?' selected':''}" data-method="${m}">
+              <span class="method-dot dot-${m}"></span>${m}
+            </div>`).join('')}
+        </div>
+      </div>
+      <input type="url" class="url-input" id="url_${tab.id}" value="${esc(tab.url)}"
+        placeholder="https://api.example.com/v1/endpoint"
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    </div>
+    <button class="send-btn" id="send_${tab.id}">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+        <path d="M22 2L11 13" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M22 2L15 22l-4-9-9-4 20-7z" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Send Request
+    </button>
+  </div>
+
+  <!-- Inner Tabs -->
+  <div class="req-nav">
+    <button class="req-nav-btn active" data-rtab="params">Params</button>
+    <button class="req-nav-btn" data-rtab="auth">Auth</button>
+    <button class="req-nav-btn" data-rtab="headers">Headers</button>
+    <button class="req-nav-btn" data-rtab="body">Body</button>
+  </div>
+
+  <!-- Params -->
+  <div class="req-pane active" data-rpane="params">
+    <div class="section-label">Query Parameters</div>
+    <div class="kv-list" id="params_${tab.id}">${buildKvRows(tab.params)}</div>
+    <button class="add-row-btn" data-addkv="params_${tab.id}">+ Add Parameter</button>
+  </div>
+
+  <!-- Auth -->
+  <div class="req-pane" data-rpane="auth">
+    <div class="section-label">Auth Type</div>
+    <div class="auth-type-grid">
+      ${['none','bearer','basic','apikey'].map(a=>`
+        <button class="auth-type-opt${a===tab.authType?' active':''}" data-auth="${a}">${a==='none'?'None':a==='bearer'?'Bearer Token':a==='basic'?'Basic Auth':'API Key'}</button>
+      `).join('')}
+    </div>
+    <div class="auth-fields-wrap" id="af_${tab.id}">${pAuth}</div>
+  </div>
+
+  <!-- Headers -->
+  <div class="req-pane" data-rpane="headers">
+    <div class="section-label">Request Headers</div>
+    <div class="kv-list" id="headers_${tab.id}">${buildKvRows(tab.headers)}</div>
+    <button class="add-row-btn" data-addkv="headers_${tab.id}">+ Add Header</button>
+  </div>
+
+  <!-- Body -->
+  <div class="req-pane" data-rpane="body">
+    <div class="section-label">Request Body</div>
+    <div class="body-type-row">
+      ${['none','json','text','form','xml'].map(b=>`<button class="body-type-chip${b===tab.bodyType?' active':''}" data-bodytype="${b}">${b==='none'?'None':b==='json'?'JSON':b==='text'?'Raw Text':b==='form'?'Form':'XML'}</button>`).join('')}
+    </div>
+    ${pBody}
+  </div>
+
+  <!-- Response -->
+  <div class="response-section" id="resp_${tab.id}">
+    ${pResp}
+  </div>
+  `;
+}
+
+function buildKvRows(arr=[]) {
+  return arr.map(r=>`
+    <div class="kv-row">
+      <button class="kv-toggle${r.on!==false?' active':''}">${r.on!==false?'✓':''}</button>
+      <input class="kv-key" type="text" placeholder="Key" value="${esc(r.k||'')}"
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <input class="kv-val" type="text" placeholder="Value" value="${esc(r.v||'')}"
+        autocomplete="off" autocorrect="off" spellcheck="false">
+      <button class="kv-del">×</button>
+    </div>`).join('');
+}
+
+function buildAuthHTML(type, data={}) {
+  if (type==='none') return '<div class="info-box">No authentication will be added to this request.</div>';
+  if (type==='bearer') return `<div class="auth-field"><label>Bearer Token</label>
+    <input id="ath_bearer" type="text" value="${esc(data.token||'')}" placeholder="eyJhbGciOiJIUzI1NiIs..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>`;
+  if (type==='basic') return `
+    <div class="auth-field"><label>Username</label><input id="ath_user" type="text" value="${esc(data.user||'')}" placeholder="username" autocomplete="off"></div>
+    <div class="auth-field"><label>Password</label><input id="ath_pass" type="password" value="${esc(data.pass||'')}" placeholder="••••••••" autocomplete="off"></div>`;
+  if (type==='apikey') return `
+    <div class="auth-field"><label>Key Name</label><input id="ath_kname" type="text" value="${esc(data.kname||'')}" placeholder="X-API-Key" autocomplete="off"></div>
+    <div class="auth-field"><label>Key Value</label><input id="ath_kval" type="text" value="${esc(data.kval||'')}" placeholder="your-api-key" autocomplete="off"></div>
+    <div class="auth-field"><label>Add To</label>
+      <select id="ath_kin"><option value="header"${data.kin!=='query'?' selected':''}>Request Header</option><option value="query"${data.kin==='query'?' selected':''}>Query Parameter</option></select></div>`;
+  return '';
+}
+
+function buildBodyHTML(type, tab) {
+  return `
+    <div class="body-zone${type==='none'?' active':''}" data-bzone="none"><div class="info-box">No body will be sent with this request.</div></div>
+    <div class="body-zone${type==='json'?' active':''}" data-bzone="json">
+      <textarea class="body-textarea" id="bjson_${tab.id}" rows="10" placeholder='{\n  "key": "value"\n}'>${esc(tab.bodyJson||'')}</textarea>
+      <button class="format-btn" data-fmt="json">⟳&nbsp; Format JSON</button>
+    </div>
+    <div class="body-zone${type==='text'?' active':''}" data-bzone="text">
+      <textarea class="body-textarea" id="btext_${tab.id}" rows="10" placeholder="Enter raw text body...">${esc(tab.bodyText||'')}</textarea>
+    </div>
+    <div class="body-zone${type==='form'?' active':''}" data-bzone="form">
+      <div class="kv-list" id="bform_${tab.id}">${buildKvRows(tab.bodyForm)}</div>
+      <button class="add-row-btn" data-addkv="bform_${tab.id}">+ Add Field</button>
+    </div>
+    <div class="body-zone${type==='xml'?' active':''}" data-bzone="xml">
+      <textarea class="body-textarea" id="bxml_${tab.id}" rows="10" placeholder='<?xml version="1.0"?>\n<root>\n  <item>value</item>\n</root>'>${esc(tab.bodyXml||'')}</textarea>
+    </div>`;
+}
+
+function buildResponseHTML(resp) {
+  if (!resp) return `
+    <div class="response-top"><span class="response-label">Response</span><div class="response-pills"></div></div>
+    <div class="resp-inner-tabs">
+      <button class="resp-tab-btn active" data-resp="body">Body</button>
+      <button class="resp-tab-btn" data-resp="headers">Headers</button>
+    </div>
+    <div class="resp-pane active" data-respane="body">
+      <div class="empty-state"><div class="icon">⚡</div>Hit <strong>Send Request</strong> to fire a request</div>
+    </div>
+    <div class="resp-pane" data-respane="headers">
+      <div class="empty-state"><div class="icon">📋</div>Response headers will appear here</div>
+    </div>`;
+
+  const sc = Math.floor(resp.status/100);
+  let bodyHTML;
+  try {
+    const parsed = JSON.parse(resp.body);
+    const pretty = JSON.stringify(parsed, null, 2);
+    bodyHTML=`<div class="resp-toolbar"><button class="copy-btn" data-copyresp="1">Copy JSON</button></div>
+      <div class="resp-body-wrap"><pre class="resp-body">${highlight(pretty)}</pre></div>`;
+  } catch {
+    bodyHTML=`<div class="resp-toolbar"><button class="copy-btn" data-copyresp="1">Copy</button></div>
+      <div class="resp-body-wrap"><pre class="resp-body">${esc(resp.body)}</pre></div>`;
+  }
+  const hdrHTML = Object.entries(resp.headers||{}).map(([k,v])=>
+    `<div class="resp-hdr-item"><div class="resp-hdr-key">${esc(k)}</div><div class="resp-hdr-val">${esc(v)}</div></div>`
+  ).join('');
+
+  return `
+    <div class="response-top">
+      <span class="response-label">Response</span>
+      <div class="response-pills">
+        <span class="status-pill s${sc}">${resp.status} ${esc(resp.statusText)}</span>
+        <span class="meta-chip">${resp.elapsed} ms</span>
+        <span class="meta-chip">${fmtBytes(resp.size)}</span>
+      </div>
+    </div>
+    <div class="resp-inner-tabs">
+      <button class="resp-tab-btn active" data-resp="body">Body</button>
+      <button class="resp-tab-btn" data-resp="headers">Headers</button>
+    </div>
+    <div class="resp-pane active" data-respane="body">${bodyHTML}</div>
+    <div class="resp-pane" data-respane="headers">
+      ${hdrHTML ? `<div class="resp-hdr-list">${hdrHTML}</div>` : '<div class="empty-state"><div class="icon">📋</div>No response headers</div>'}
+    </div>`;
+}
+
+function highlight(json) {
+  return esc(json).replace(
+    /("(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(?:true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+    m => {
+      if(/^"/.test(m)) return `<span class="${/:$/.test(m)?'jk':'js'}">${m}</span>`;
+      if(/true|false/.test(m)) return `<span class="jb">${m}</span>`;
+      if(/null/.test(m)) return `<span class="jx">${m}</span>`;
+      return `<span class="jn">${m}</span>`;
+    }
+  );
+}
+
+/* ═══════════════════════════════════════════════════
+   SYNC FORM → TAB (read DOM values into tab state)
+═══════════════════════════════════════════════════ */
+function syncFormToTab(tab) {
+  const div = document.querySelector(`.tab-content[data-id="${tab.id}"]`);
+  if (!div) return;
+  // URL
+  const urlEl = div.querySelector(`#url_${tab.id}`);
+  if (urlEl) tab.url = urlEl.value;
+  // KV
+  tab.params  = readKvList(div.querySelector(`#params_${tab.id}`));
+  tab.headers = readKvList(div.querySelector(`#headers_${tab.id}`));
+  tab.bodyForm= readKvList(div.querySelector(`#bform_${tab.id}`));
+  // Body text
+  const bjson = div.querySelector(`#bjson_${tab.id}`); if(bjson) tab.bodyJson=bjson.value;
+  const btext = div.querySelector(`#btext_${tab.id}`); if(btext) tab.bodyText=btext.value;
+  const bxml  = div.querySelector(`#bxml_${tab.id}`);  if(bxml)  tab.bodyXml=bxml.value;
+  // Auth
+  const bearerEl = div.querySelector('#ath_bearer'); if(bearerEl) tab.authData.token=bearerEl.value;
+  const userEl   = div.querySelector('#ath_user');   if(userEl)   tab.authData.user=userEl.value;
+  const passEl   = div.querySelector('#ath_pass');   if(passEl)   tab.authData.pass=passEl.value;
+  const knEl     = div.querySelector('#ath_kname');  if(knEl)     tab.authData.kname=knEl.value;
+  const kvEl     = div.querySelector('#ath_kval');   if(kvEl)     tab.authData.kval=kvEl.value;
+  const kiEl     = div.querySelector('#ath_kin');    if(kiEl)     tab.authData.kin=kiEl.value;
+}
+
+function readKvList(listEl) {
+  if (!listEl) return [];
+  return Array.from(listEl.querySelectorAll('.kv-row')).map(row => ({
+    on: row.querySelector('.kv-toggle').classList.contains('active'),
+    k:  row.querySelector('.kv-key').value,
+    v:  row.querySelector('.kv-val').value
+  }));
+}
+
+/* ═══════════════════════════════════════════════════
+   BIND EVENTS for a tab content panel
+═══════════════════════════════════════════════════ */
+function bindTabEvents(div, tab) {
+  // method dropdown
+  const mb = div.querySelector(`#mb_${tab.id}`);
+  const mm = div.querySelector(`#mm_${tab.id}`);
+  mb.addEventListener('click', e => { e.stopPropagation(); const o=mm.classList.toggle('open'); mb.classList.toggle('open',o); });
+  mm.addEventListener('click', e => {
+    const item = e.target.closest('.method-item');
+    if (!item) return;
+    tab.method = item.dataset.method;
+    div.querySelector('.mlabel').textContent = tab.method;
+    mb.className = `method-btn ${tab.method}`;
+    mb.classList.remove('open'); mm.classList.remove('open');
+    mm.querySelectorAll('.method-item').forEach(i=>i.classList.toggle('selected',i===item));
+    autoSave(tab);
+    renderTabBar(); renderSidebar();
+  });
+
+  // Tab name input
+  const nameEl = div.querySelector(`#tname_${tab.id}`);
+  nameEl.addEventListener('input', () => {
+    tab.name = nameEl.value.trim() || 'New Request';
+    tab._customName = true;
+    autoSave(tab);
+    renderTabBar(); renderSidebar();
+  });
+
+  // URL input auto-save + name update
+  const urlEl = div.querySelector(`#url_${tab.id}`);
+  urlEl.addEventListener('input', () => {
+    tab.url = urlEl.value;
+    if (!tab._customName) {
+      autoNameTab(tab);
+      // keep name input in sync
+      div.querySelector(`#tname_${tab.id}`).value = tab.name;
+    }
+    autoSave(tab);
+    renderTabBar(); renderSidebar();
+  });
+  urlEl.addEventListener('keydown', e => { if(e.key==='Enter') doSend(tab, div); });
+
+  // inner nav tabs
+  div.querySelectorAll('.req-nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      div.querySelectorAll('.req-nav-btn').forEach(b=>b.classList.toggle('active',b===btn));
+      div.querySelectorAll('.req-pane').forEach(p=>p.classList.toggle('active',p.dataset.rpane===btn.dataset.rtab));
+    });
+  });
+
+  // add-kv buttons
+  div.querySelectorAll('[data-addkv]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const listEl = div.querySelector('#'+btn.dataset.addkv);
+      if(listEl) addKvRow(listEl, tab);
+    });
+  });
+
+  // auth type grid
+  div.querySelectorAll('.auth-type-opt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      syncFormToTab(tab);
+      tab.authType = btn.dataset.auth;
+      div.querySelectorAll('.auth-type-opt').forEach(b=>b.classList.toggle('active',b===btn));
+      div.querySelector(`#af_${tab.id}`).innerHTML = buildAuthHTML(tab.authType, tab.authData);
+      autoSave(tab);
+    });
+  });
+
+  // body type chips
+  div.querySelectorAll('.body-type-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      syncFormToTab(tab);
+      tab.bodyType = chip.dataset.bodytype;
+      div.querySelectorAll('.body-type-chip').forEach(c=>c.classList.toggle('active',c===chip));
+      div.querySelectorAll('.body-zone').forEach(z=>z.classList.toggle('active',z.dataset.bzone===tab.bodyType));
+      autoSave(tab);
+    });
+  });
+
+  // format json
+  div.querySelector('[data-fmt="json"]')?.addEventListener('click', () => {
+    const ta = div.querySelector(`#bjson_${tab.id}`);
+    try { ta.value = JSON.stringify(JSON.parse(ta.value), null, 2); showToast('JSON formatted ✓'); }
+    catch(e){ showToast('Invalid JSON: '+e.message); }
+  });
+
+  // resp inner tabs
+  div.querySelector('.resp-inner-tabs')?.addEventListener('click', e => {
+    const btn = e.target.closest('.resp-tab-btn');
+    if(!btn) return;
+    div.querySelectorAll('.resp-tab-btn').forEach(b=>b.classList.toggle('active',b===btn));
+    div.querySelectorAll('.resp-pane').forEach(p=>p.classList.toggle('active',p.dataset.respane===btn.dataset.resp));
+  });
+
+  // send
+  div.querySelector(`#send_${tab.id}`).addEventListener('click', () => doSend(tab, div));
+
+  // copy response (delegated — re-bind after response renders)
+  bindCopyResp(div, tab);
+
+  // auto-save on textarea changes
+  div.querySelectorAll('textarea').forEach(ta => {
+    ta.addEventListener('input', () => autoSave(tab));
+  });
+}
+
+function bindCopyResp(div, tab) {
+  div.querySelector('[data-copyresp]')?.addEventListener('click', () => {
+    const pre = div.querySelector('pre.resp-body');
+    copyText(pre ? pre.textContent : '');
+  });
+}
+
+function addKvRow(listEl, tab) {
+  const row = document.createElement('div');
+  row.className = 'kv-row';
+  row.innerHTML = `
+    <button class="kv-toggle active">✓</button>
+    <input class="kv-key" type="text" placeholder="Key" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <input class="kv-val" type="text" placeholder="Value" autocomplete="off" autocorrect="off" spellcheck="false">
+    <button class="kv-del">×</button>
+  `;
+  row.querySelector('.kv-toggle').addEventListener('click', function(){
+    this.classList.toggle('active');
+    this.textContent = this.classList.contains('active') ? '✓' : '';
+    row.style.opacity = this.classList.contains('active') ? '1' : '0.45';
+    autoSave(tab);
+  });
+  row.querySelector('.kv-del').addEventListener('click', () => { row.remove(); autoSave(tab); });
+  row.querySelectorAll('input').forEach(i => i.addEventListener('input', ()=>autoSave(tab)));
+  listEl.appendChild(row);
+}
+
+function autoNameTab(tab) {
+  if (tab._customName) return;
+  if (!tab.url) { tab.name='New Request'; return; }
+  try {
+    const u = new URL(/^https?:\/\//i.test(tab.url)?tab.url:'https://'+tab.url);
+    const parts = u.pathname.replace(/\/+$/,'').split('/').filter(Boolean);
+    tab.name = parts.length ? parts[parts.length-1] : u.hostname;
+  } catch { tab.name = tab.url.slice(0,24)||'New Request'; }
+}
+
+function autoSave(tab) {
+  syncFormToTab(tab);
+  save();
+}
+
+/* ═══════════════════════════════════════════════════
+   SEND REQUEST
+═══════════════════════════════════════════════════ */
+async function doSend(tab, div) {
+  syncFormToTab(tab);
+
+  const rawUrl = tab.url.trim();
+  if (!rawUrl) { showToast('Enter a URL first'); return; }
+
+  let url;
+  try { url = new URL(/^https?:\/\//i.test(rawUrl)?rawUrl:'https://'+rawUrl); }
+  catch { showToast('Invalid URL'); return; }
+
+  const headers = {};
+
+  // params
+  tab.params.filter(p=>p.on&&p.k).forEach(p=>url.searchParams.set(p.k,p.v));
+
+  // auth
+  if (tab.authType==='bearer' && tab.authData.token) headers['Authorization']='Bearer '+tab.authData.token;
+  else if (tab.authType==='basic' && tab.authData.user) headers['Authorization']='Basic '+btoa(tab.authData.user+':'+(tab.authData.pass||''));
+  else if (tab.authType==='apikey' && tab.authData.kname && tab.authData.kval) {
+    if (tab.authData.kin==='query') url.searchParams.set(tab.authData.kname, tab.authData.kval);
+    else headers[tab.authData.kname] = tab.authData.kval;
+  }
+
+  // custom headers
+  tab.headers.filter(h=>h.on&&h.k).forEach(h=>{ headers[h.k]=h.v; });
+
+  // body
+  let body;
+  if (!['GET','HEAD'].includes(tab.method)) {
+    if (tab.bodyType==='json' && tab.bodyJson.trim()) {
+      try { JSON.parse(tab.bodyJson); } catch(e){ showToast('Invalid JSON: '+e.message); return; }
+      body=tab.bodyJson; if(!headers['Content-Type']) headers['Content-Type']='application/json';
+    } else if (tab.bodyType==='text') {
+      body=tab.bodyText; if(!headers['Content-Type']) headers['Content-Type']='text/plain';
+    } else if (tab.bodyType==='form') {
+      const fd=new URLSearchParams();
+      tab.bodyForm.filter(f=>f.on&&f.k).forEach(f=>fd.append(f.k,f.v));
+      body=fd.toString(); if(!headers['Content-Type']) headers['Content-Type']='application/x-www-form-urlencoded';
+    } else if (tab.bodyType==='xml') {
+      body=tab.bodyXml; if(!headers['Content-Type']) headers['Content-Type']='application/xml';
+    }
+  }
+
+  // loading
+  const sendBtn = div.querySelector(`#send_${tab.id}`);
+  sendBtn.classList.add('loading');
+  sendBtn.innerHTML='<div class="spinner" style="width:15px;height:15px;border-width:2px;border-color:rgba(255,255,255,.3);border-top-color:#fff"></div>&nbsp;Sending…';
+
+  const respSection = div.querySelector(`#resp_${tab.id}`);
+  respSection.innerHTML=`<div class="response-top"><span class="response-label">Response</span><div class="response-pills"></div></div><div class="loader"><div class="spinner"></div>Waiting for response…</div>`;
+
+  const t0=performance.now();
+  try {
+    const opts={method:tab.method, headers};
+    if(body!==undefined) opts.body=body;
+    const res = await fetch(url.toString(), opts);
+    const elapsed = Math.round(performance.now()-t0);
+    const text = await res.text();
+    const size = new TextEncoder().encode(text).length;
+
+    // store response
+    const respHeaders={};
+    res.headers.forEach((v,k)=>{ respHeaders[k]=v; });
+    tab.response = { status:res.status, statusText:res.statusText, elapsed, size, body:text, headers:respHeaders };
+    save();
+
+    respSection.innerHTML = buildResponseHTML(tab.response);
+    // bind resp inner tabs + copy
+    respSection.querySelectorAll('.resp-tab-btn').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        respSection.querySelectorAll('.resp-tab-btn').forEach(b=>b.classList.toggle('active',b===btn));
+        respSection.querySelectorAll('.resp-pane').forEach(p=>p.classList.toggle('active',p.dataset.respane===btn.dataset.resp));
+      });
+    });
+    bindCopyResp(div, tab);
+
+    respSection.scrollIntoView({behavior:'smooth', block:'start'});
+  } catch(err) {
+    tab.response=null; save();
+    respSection.innerHTML=`
+      <div class="response-top"><span class="response-label">Response</span>
+        <div class="response-pills"><span class="status-pill s5">Network Error</span></div>
+      </div>
+      <div style="padding:14px">
+        <div style="color:var(--error);font-family:var(--font-code);font-size:14px;font-weight:700;margin-bottom:8px">Request Failed</div>
+        <div style="color:var(--text-sub);font-size:13px;margin-bottom:12px;font-family:var(--font-code)">${esc(err.message)}</div>
+        <div class="info-box"><strong>CORS:</strong> Browsers block cross-origin requests without CORS headers. Try a proxy prefix.</div>
+      </div>`;
+  } finally {
+    sendBtn.classList.remove('loading');
+    sendBtn.innerHTML=`<svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <path d="M22 2L11 13" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M22 2L15 22l-4-9-9-4 20-7z" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg> Send Request`;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   TAB MANAGEMENT
+═══════════════════════════════════════════════════ */
+function switchTab(id) {
+  if (activeTabId && activeTabId!==id) {
+    const prev=activeTab();
+    if(prev) syncFormToTab(prev);
+    save();
+  }
+  activeTabId=id;
+  renderAll();
+  save();
+}
+
+function addTab(partial={}) {
+  const t = newTab(partial);
+  tabs.push(t);
+  activeTabId = t.id;
+  save();
+  renderAll();
+  // scroll tab bar to end
+  const bar=document.getElementById('tabBar');
+  bar.scrollLeft=bar.scrollWidth;
+  return t;
+}
+
+function closeTab(id) {
+  const idx=tabs.findIndex(t=>t.id===id);
+  if(idx===-1) return;
+  tabs.splice(idx,1);
+  if(activeTabId===id) {
+    activeTabId = tabs.length ? (tabs[Math.max(0,idx-1)]||tabs[0]).id : null;
+  }
+  save();
+  renderAll();
+}
+
+function copyTab(id) {
+  const src = getTab(id);
+  if (!src) return;
+  syncFormToTab(src);
+  // deep copy via JSON round-trip, assign new id and mark name custom
+  const copy = newTab(JSON.parse(JSON.stringify({ ...src, id: undefined, name: 'Copy of ' + src.name, _customName: true, response: null })));
+  copy._customName = true;
+  const srcIdx = tabs.findIndex(t=>t.id===id);
+  tabs.splice(srcIdx+1, 0, copy);
+  activeTabId = copy.id;
+  save();
+  renderAll();
+  showToast('Tab duplicated ✓');
+}
+
+/* ═══════════════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════════════ */
+function toggleSidebar(force) {
+  _sidebarOpen = force!==undefined ? force : !_sidebarOpen;
+  document.getElementById('sidebar').classList.toggle('collapsed', !_sidebarOpen);
+}
+
+/* ═══════════════════════════════════════════════════
+   IMPORT / EXPORT
+═══════════════════════════════════════════════════ */
+function exportTabs() {
+  tabs.forEach(t=>syncFormToTab(t));
+  save();
+  const json = JSON.stringify(tabs, null, 2);
+  document.getElementById('exportJson').value = json;
+  document.getElementById('exportModal').classList.add('open');
+}
+
+function importTabs(json) {
+  let arr;
+  try { arr = JSON.parse(json); } catch { showToast('Invalid JSON'); return false; }
+  if (!Array.isArray(arr)) { showToast('Expected a JSON array'); return false; }
+  const imported = arr.map(t=>newTab(t));
+  imported.forEach(t=>tabs.push(t));
+  if(!activeTabId && tabs.length) activeTabId=tabs[0].id;
+  save();
+  renderAll();
+  showToast(`Imported ${imported.length} request(s) ✓`);
+  return true;
+}
+
+/* ═══════════════════════════════════════════════════
+   WIRE UP HEADER BUTTONS & MODALS
+═══════════════════════════════════════════════════ */
+document.getElementById('sidebarToggle').addEventListener('click', ()=>toggleSidebar());
+document.getElementById('addTabBtn').addEventListener('click', ()=>addTab());
+document.getElementById('newReqBtn').addEventListener('click', ()=>{ addTab(); if(window.innerWidth<600)toggleSidebar(false); });
+
+document.getElementById('sidebarSearch').addEventListener('input', function(){
+  renderSidebar(this.value);
+});
+
+// close method menus on outside click
+document.addEventListener('click', ()=>{
+  document.querySelectorAll('.method-menu.open').forEach(m=>{
+    m.classList.remove('open');
+    m.previousElementSibling?.classList.remove('open');
+  });
+});
+
+// Export
+document.getElementById('exportBtn').addEventListener('click', exportTabs);
+document.getElementById('exportClose').addEventListener('click', ()=>document.getElementById('exportModal').classList.remove('open'));
+document.getElementById('exportCopy').addEventListener('click', ()=>{
+  copyText(document.getElementById('exportJson').value);
+});
+document.getElementById('exportModal').addEventListener('click', e=>{
+  if(e.target===document.getElementById('exportModal')) document.getElementById('exportModal').classList.remove('open');
+});
+
+// Import
+document.getElementById('importBtn').addEventListener('click', ()=>{
+  document.getElementById('importJson').value='';
+  document.getElementById('importModal').classList.add('open');
+});
+document.getElementById('importCancel').addEventListener('click', ()=>document.getElementById('importModal').classList.remove('open'));
+document.getElementById('importConfirm').addEventListener('click', ()=>{
+  const json=document.getElementById('importJson').value.trim();
+  if(importTabs(json)) document.getElementById('importModal').classList.remove('open');
+});
+document.getElementById('importModal').addEventListener('click', e=>{
+  if(e.target===document.getElementById('importModal')) document.getElementById('importModal').classList.remove('open');
+});
+
+/* ═══════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════ */
+load();
+if (!tabs.length) addTab(); // start with one blank tab
+else renderAll();
+</script>
+</body>
+</html>
