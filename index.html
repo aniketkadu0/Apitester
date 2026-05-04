@@ -184,18 +184,19 @@
     }
     .req-item.active .req-name { color: var(--accent); font-weight: 600; }
     .req-item-actions {
-      display: flex; gap: 2px; flex-shrink: 0; opacity: 0; transition: opacity 0.15s;
+      display: flex; gap: 2px; flex-shrink: 0; opacity: 1; transition: opacity 0.15s;
     }
+    .req-item .req-item-actions { opacity: 0.45; }
     .req-item:hover .req-item-actions { opacity: 1; }
     .req-del, .req-copy-btn {
-      width: 22px; height: 22px;
+      width: 26px; height: 26px;
       background: none; border: none; border-radius: 4px;
-      color: var(--text-muted); font-size: 15px; line-height: 1;
+      color: var(--text-sub); font-size: 15px; line-height: 1;
       cursor: pointer; display: flex; align-items: center; justify-content: center;
       flex-shrink: 0; transition: background 0.15s, color 0.15s;
     }
-    .req-del:active { background: #fee2e2; color: var(--error); }
-    .req-copy-btn:active { background: var(--accent-dim); color: var(--accent); }
+    .req-del:hover { background: #fee2e2; color: var(--error); }
+    .req-copy-btn:hover { background: var(--accent-dim); color: var(--accent); }
 
     .sidebar-empty {
       padding: 28px 16px;
@@ -306,7 +307,8 @@
       display: flex; flex-direction: column; gap: 8px;
       flex-shrink: 0;
     }
-    .method-url-row { display: flex; gap: 7px; align-items: center; }
+    .method-url-row { display: flex; gap: 7px; align-items: flex-start; width: 100%; }
+    .method-url-row .url-input { flex: 1; min-width: 0; }
 
     /* Custom method dropdown */
     .method-wrap { position: relative; flex-shrink: 0; }
@@ -349,10 +351,12 @@
     .dot-OPTIONS{ background: var(--OPTIONS); }
 
     .url-input {
-      flex: 1; height: 46px; background: var(--input-bg);
+      flex: 1; min-height: 46px; max-height: 120px; height: auto;
+      background: var(--input-bg);
       border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-      padding: 0 13px; color: var(--text); font-family: var(--font-code);
-      font-size: 13px; min-width: 0;
+      padding: 11px 13px; color: var(--text); font-family: var(--font-code);
+      font-size: 13px; min-width: 0; resize: none; overflow-y: auto;
+      line-height: 1.5; word-break: break-all;
       transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
     }
     .url-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); background: #fff; }
@@ -717,6 +721,11 @@ function fmtBytes(n){
   if(n<1048576)return(n/1024).toFixed(1)+' KB';
   return(n/1048576).toFixed(1)+' MB';
 }
+function fmtTime(ms){
+  if(ms<1000) return ms+' ms';
+  if(ms<60000) return (ms/1000).toFixed(2).replace(/\.?0+$/,'')+' s';
+  return (ms/60000).toFixed(1)+' min';
+}
 async function copyText(t){
   try{await navigator.clipboard.writeText(t);showToast('Copied ✓');}
   catch{showToast('Copy failed');}
@@ -729,7 +738,7 @@ function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(
 const STORAGE_KEY = 'apitester_tabs_v2';
 let tabs = [];          // array of tab objects
 let activeTabId = null;
-let _sidebarOpen = true;
+let _sidebarOpen = false;
 
 /* tab schema:
   { id, name, method, url,
@@ -908,9 +917,10 @@ function buildTabHTML(tab) {
             </div>`).join('')}
         </div>
       </div>
-      <input type="url" class="url-input" id="url_${tab.id}" value="${esc(tab.url)}"
+      <textarea class="url-input" id="url_${tab.id}"
         placeholder="https://api.example.com/v1/endpoint"
-        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+        rows="1">${esc(tab.url)}</textarea>
     </div>
     <button class="send-btn" id="send_${tab.id}">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
@@ -1050,7 +1060,7 @@ function buildResponseHTML(resp) {
       <span class="response-label">Response</span>
       <div class="response-pills">
         <span class="status-pill s${sc}">${resp.status} ${esc(resp.statusText)}</span>
-        <span class="meta-chip">${resp.elapsed} ms</span>
+        <span class="meta-chip">${fmtTime(resp.elapsed)}</span>
         <span class="meta-chip">${fmtBytes(resp.size)}</span>
       </div>
     </div>
@@ -1140,10 +1150,17 @@ function bindTabEvents(div, tab) {
     renderTabBar(); renderSidebar();
   });
 
-  // URL input auto-save + name update
+  // URL textarea auto-save + name update + auto-grow
   const urlEl = div.querySelector(`#url_${tab.id}`);
+  function growUrl() {
+    urlEl.style.height = 'auto';
+    urlEl.style.height = Math.min(urlEl.scrollHeight, 120) + 'px';
+  }
+  growUrl(); // initial size from loaded value
   urlEl.addEventListener('input', () => {
-    tab.url = urlEl.value;
+    tab.url = urlEl.value.trim();
+    growUrl();
+    syncUrlToParams(div, tab);
     if (!tab._customName) {
       autoNameTab(tab);
       // keep name input in sync
@@ -1152,7 +1169,21 @@ function bindTabEvents(div, tab) {
     autoSave(tab);
     renderTabBar(); renderSidebar();
   });
-  urlEl.addEventListener('keydown', e => { if(e.key==='Enter') doSend(tab, div); });
+  urlEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(tab, div); }
+  });
+
+  // Params list → URL sync (event delegation so it catches dynamically added rows too)
+  const paramsListEl = div.querySelector(`#params_${tab.id}`);
+  paramsListEl.addEventListener('input', () => {
+    syncParamsToUrl(div, tab);
+    autoSave(tab);
+  });
+  paramsListEl.addEventListener('click', e => {
+    if (e.target.classList.contains('kv-toggle') || e.target.classList.contains('kv-del')) {
+      setTimeout(() => { syncParamsToUrl(div, tab); autoSave(tab); }, 10);
+    }
+  });
 
   // inner nav tabs
   div.querySelectorAll('.req-nav-btn').forEach(btn => {
@@ -1224,6 +1255,54 @@ function bindCopyResp(div, tab) {
     const pre = div.querySelector('pre.resp-body');
     copyText(pre ? pre.textContent : '');
   });
+}
+
+/* ── Params ↔ URL two-way sync ── */
+function populateKvList(listEl, tab, params) {
+  listEl.innerHTML = '';
+  params.forEach(({on=true, k='', v=''}) => {
+    const row = document.createElement('div');
+    row.className = 'kv-row';
+    if (!on) row.style.opacity = '0.45';
+    row.innerHTML = `
+      <button class="kv-toggle${on?' active':''}">${on?'✓':''}</button>
+      <input class="kv-key" type="text" placeholder="Key" value="${esc(k)}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <input class="kv-val" type="text" placeholder="Value" value="${esc(v)}" autocomplete="off" autocorrect="off" spellcheck="false">
+      <button class="kv-del">×</button>
+    `;
+    row.querySelector('.kv-toggle').addEventListener('click', function(){
+      this.classList.toggle('active');
+      this.textContent = this.classList.contains('active') ? '✓' : '';
+      row.style.opacity = this.classList.contains('active') ? '1' : '0.45';
+      autoSave(tab);
+    });
+    row.querySelector('.kv-del').addEventListener('click', () => { row.remove(); autoSave(tab); });
+    row.querySelectorAll('input').forEach(i => i.addEventListener('input', () => autoSave(tab)));
+    listEl.appendChild(row);
+  });
+}
+
+function syncUrlToParams(div, tab) {
+  const listEl = div.querySelector(`#params_${tab.id}`);
+  if (!listEl) return;
+  const params = [];
+  try {
+    const q = tab.url.indexOf('?');
+    if (q !== -1) new URLSearchParams(tab.url.slice(q + 1)).forEach((v, k) => params.push({on:true, k, v}));
+  } catch {}
+  populateKvList(listEl, tab, params);
+}
+
+function syncParamsToUrl(div, tab) {
+  const urlEl = div.querySelector(`#url_${tab.id}`);
+  if (!urlEl) return;
+  const params = readKvList(div.querySelector(`#params_${tab.id}`)).filter(r => r.on && r.k);
+  const base = tab.url.replace(/\?.*$/, '');
+  const qs = params.map(r => encodeURIComponent(r.k) + '=' + encodeURIComponent(r.v)).join('&');
+  tab.url = base + (qs ? '?' + qs : '');
+  urlEl.value = tab.url;
+  urlEl.style.height = 'auto';
+  urlEl.style.height = Math.min(urlEl.scrollHeight, 120) + 'px';
 }
 
 function addKvRow(listEl, tab) {
@@ -1494,6 +1573,7 @@ document.getElementById('importModal').addEventListener('click', e=>{
 load();
 if (!tabs.length) addTab(); // start with one blank tab
 else renderAll();
+toggleSidebar(false); // always start collapsed
 </script>
 </body>
 </html>
