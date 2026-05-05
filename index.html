@@ -374,6 +374,21 @@
     .send-btn:active { transform: scale(0.98); }
     .send-btn.loading { opacity: 0.65; pointer-events: none; }
 
+    .send-row { display: flex; flex-direction: column; gap: 6px; }
+    .proxy-row { display: flex; align-items: center; gap: 8px; }
+    .proxy-toggle {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; font-family: var(--font-ui); color: var(--text-sub);
+      cursor: pointer; user-select: none; padding: 4px 0;
+    }
+    .proxy-toggle input[type=checkbox] { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; margin: 0; }
+    .proxy-badge {
+      font-size: 10px; font-weight: 700; font-family: var(--font-code);
+      background: #fef3c7; color: #92400e;
+      border: 1px solid #fde68a; border-radius: 3px;
+      padding: 1px 5px; letter-spacing: 0.3px;
+    }
+
     /* ── Request inner tabs ── */
     .req-nav {
       display: flex; background: var(--surface); border-bottom: 1.5px solid var(--border);
@@ -765,6 +780,7 @@ function newTab(partial={}) {
     bodyText: partial.bodyText || '',
     bodyXml: partial.bodyXml || '',
     bodyForm: partial.bodyForm || [],
+    corsProxy: partial.corsProxy || false,
     response: partial.response || null
   };
 }
@@ -922,13 +938,23 @@ function buildTabHTML(tab) {
         autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
         rows="1">${esc(tab.url)}</textarea>
     </div>
-    <button class="send-btn" id="send_${tab.id}">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-        <path d="M22 2L11 13" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M22 2L15 22l-4-9-9-4 20-7z" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      Send Request
-    </button>
+    <div class="send-row">
+      <button class="send-btn" id="send_${tab.id}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+          <path d="M22 2L11 13" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M22 2L15 22l-4-9-9-4 20-7z" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Send Request
+      </button>
+      <div class="proxy-row">
+        <label class="proxy-toggle">
+          <input type="checkbox" id="proxy_${tab.id}" ${tab.corsProxy?'checked':''}>
+          <span>CORS Proxy</span>
+        </label>
+        <span class="proxy-badge">corsproxy.io</span>
+        <span style="font-size:11px;color:var(--text-muted)">— bypass browser CORS restriction</span>
+      </div>
+    </div>
   </div>
 
   <!-- Inner Tabs -->
@@ -1238,6 +1264,10 @@ function bindTabEvents(div, tab) {
     div.querySelectorAll('.resp-pane').forEach(p=>p.classList.toggle('active',p.dataset.respane===btn.dataset.resp));
   });
 
+  // CORS proxy toggle
+  const proxyEl = div.querySelector(`#proxy_${tab.id}`);
+  proxyEl.addEventListener('change', () => { tab.corsProxy = proxyEl.checked; autoSave(tab); });
+
   // send
   div.querySelector(`#send_${tab.id}`).addEventListener('click', () => doSend(tab, div));
 
@@ -1353,6 +1383,10 @@ async function doSend(tab, div) {
   try { url = new URL(/^https?:\/\//i.test(rawUrl)?rawUrl:'https://'+rawUrl); }
   catch { showToast('Invalid URL'); return; }
 
+  // CORS proxy
+  const proxyBase = 'https://corsproxy.io/?' ;
+  const fetchUrl = tab.corsProxy ? proxyBase + encodeURIComponent(rawUrl) : url.toString();
+
   const headers = {};
 
   // params
@@ -1398,7 +1432,8 @@ async function doSend(tab, div) {
   try {
     const opts={method:tab.method, headers};
     if(body!==undefined) opts.body=body;
-    const res = await fetch(url.toString(), opts);
+    const finalUrl = tab.corsProxy ? proxyBase + encodeURIComponent(url.toString()) : url.toString();
+    const res = await fetch(finalUrl, opts);
     const elapsed = Math.round(performance.now()-t0);
     const text = await res.text();
     const size = new TextEncoder().encode(text).length;
@@ -1429,7 +1464,7 @@ async function doSend(tab, div) {
       <div style="padding:14px">
         <div style="color:var(--error);font-family:var(--font-code);font-size:14px;font-weight:700;margin-bottom:8px">Request Failed</div>
         <div style="color:var(--text-sub);font-size:13px;margin-bottom:12px;font-family:var(--font-code)">${esc(err.message)}</div>
-        <div class="info-box"><strong>CORS:</strong> Browsers block cross-origin requests without CORS headers. Try a proxy prefix.</div>
+        <div class="info-box"><strong>CORS error?</strong> Enable the <em>CORS Proxy</em> toggle below the Send button and retry.</div>
       </div>`;
   } finally {
     sendBtn.classList.remove('loading');
